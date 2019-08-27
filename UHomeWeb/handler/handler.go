@@ -32,6 +32,10 @@ import (
 	GETINDEX "uhome/GetIndex/proto/example"
 	GETHOUSES "uhome/GetHouses/proto/example"
 	POSTORDERS"uhome/PostOrders/proto/example"
+	GETUSERORDER"uhome/GetUserOrder/proto/example"
+	PUTORDERS"uhome/PutOrders/proto/example"
+	PUTCOMMENT"uhome/PutComment/proto/example"
+
 	"uhome/UHomeWeb/models"
 	"uhome/UHomeWeb/utils"
 	example "micro/rpc/srv/proto/example"
@@ -888,46 +892,7 @@ func GetHouseInfo(w http.ResponseWriter, r *http.Request,ps httprouter.Params ) 
 		return
 	}
 }
-/*
-{
-"errno": "0",
-"errmsg": "成功",
-"data": {
-	"house": {
-				"acreage": 80,
-				"address": "西三旗桥东",
-				"beds": "2双人床",
-				"capacity": 3,
-				"comments": [
-								{
-									"comment": "评论的内容",
-									"ctime": "2017-11-12 12:30:30", "user_name": "评论人的姓名"
-								},
-								{
-									"comment": "评论的内容",
-									"ctime": "2017-11-12 12:30:30",
-									"user_name": "评论人的姓名" },
-								{
-									"comment": "评论的内容",
-									"ctime": "2017-11-12 12:30:30", "user_name": "评论人的姓名"
-								} ],
-				"deposit": 200,
-				"facilities": [9,11,13,16,19,20,21,23],
-				"hid": 1,
-				"img_urls": [
-						"http://101.200.170.171:9998/group1/M00/00/00/Zciqq1oBJY-AL3m8AAS8K2x8TDE052.jpg",
-						"http://101.200.170.171:9998/group1/M00/00/00/Zciqq1oBJZmAYqGWAAaInSze-cQ230.jpg"
-				],
-				"max_days": 30, "min_days": 1, "price": 100, "room_count": 2, "title": "上奥世纪中心", "unit": "3室3厅", "user_avatar":
-				"http://101.200.170.171:9998/group1/M00/00/00/Zciqq1oBLFeALIEjAADexS5wJKs340.png",
-				"user_id": 1,
-				"user_name": "Panda"
-			},
-	"user_id": 1
-	}
-}
-*/
-//
+
 func GetHouses(w http.ResponseWriter, r *http.Request,_ httprouter.Params ) {
 	server:= grpc.NewService()
 	server.Init()
@@ -968,6 +933,7 @@ func GetHouses(w http.ResponseWriter, r *http.Request,_ httprouter.Params ) {
 		return
 	}
 }
+
 func PostOrders(w http.ResponseWriter, r *http.Request,_ httprouter.Params ) {
 
 	body,_:=ioutil.ReadAll(r.Body)
@@ -1016,7 +982,184 @@ func PostOrders(w http.ResponseWriter, r *http.Request,_ httprouter.Params ) {
 		return
 	}
 }
+//获取订单
+func GetUserOrder(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 
+
+	beego.Info("/api/v1.0/user/orders   GetUserOrder 获取订单 ")
+	server :=grpc.NewService()
+	server.Init()
+	// call the backend service
+	exampleClient := GETUSERORDER.NewExampleService("go.micro.srv.GetUserOrder", server.Client())
+
+	//获取cookie
+	userlogin,err:=r.Cookie("userlogin")
+	if err != nil{
+		resp := map[string]interface{}{
+			"errno": utils.RECODE_SESSIONERR,
+			"errmsg": utils.RecodeText(utils.RECODE_SESSIONERR),
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		// encode and write the response as json
+		if err := json.NewEncoder(w).Encode(resp); err != nil {
+			http.Error(w, err.Error(), 503)
+			beego.Info(err)
+			return
+		}
+		return
+	}
+	//获取role
+	role := r.URL.Query()["role"][0] //role
+
+
+	rsp, err := exampleClient.GetUserOrder(context.TODO(), &GETUSERORDER.Request{
+		Sessionid:userlogin.Value,
+		Role:role,
+	})
+	if err != nil {
+		http.Error(w, err.Error(), 500)
+		return
+	}
+
+	order_list := []interface{}{}
+	json.Unmarshal(rsp.Orders,&order_list)
+
+	data := map[string]interface{}{}
+	data["orders"] = order_list
+
+
+
+	// we want to augment the response
+	response := map[string]interface{}{
+		"errno": rsp.Errno,
+		"errmsg": rsp.Errmsg,
+		"data":data,
+	}
+
+
+	w.Header().Set("Content-Type", "application/json")
+
+	// encode and write the response as json
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		http.Error(w, err.Error(), 501)
+		return
+	}
+}
+
+//房东同意/拒绝订单
+func PutOrders(w http.ResponseWriter, r *http.Request,ps httprouter.Params) {
+	// decode the incoming request as json
+	//接收请求携带的数据
+	var request map[string]interface{}
+	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
+		http.Error(w, err.Error(), 501)
+		return
+	}
+	//获取cookie
+	userlogin,err:=r.Cookie("userlogin")
+	if err != nil{
+		resp := map[string]interface{}{
+			"errno": utils.RECODE_SESSIONERR,
+			"errmsg": utils.RecodeText(utils.RECODE_SESSIONERR),
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		// encode and write the response as json
+		if err := json.NewEncoder(w).Encode(resp); err != nil {
+			http.Error(w, err.Error(), 502)
+			beego.Info(err)
+			return
+		}
+		return
+	}
+	server:=grpc.NewService()
+	server.Init()
+
+	// call the backend service
+	exampleClient := PUTORDERS.NewExampleService("go.micro.srv.PutOrders", server.Client())
+
+	rsp, err := exampleClient.PutOrders(context.TODO(), &PUTORDERS.Request{
+		Sessionid:userlogin.Value,
+		Action:request["action"].(string),
+		Orderid:ps.ByName("id"),
+	})
+	if err != nil {
+		http.Error(w, err.Error(), 503)
+		return
+	}
+
+	// we want to augment the response
+	response := map[string]interface{}{
+		"errno": rsp.Errno,
+		"errmsg": rsp.Errmsg,
+	}
+	w.Header().Set("Content-Type", "application/json")
+
+	// encode and write the response as json
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		http.Error(w, err.Error(), 504)
+		return
+	}
+}
+//用户评价订单
+func PutComment(w http.ResponseWriter, r *http.Request,ps httprouter.Params) {
+	beego.Info("PutComment  用户评价 /api/v1.0/orders/:id/comment")
+	// decode the incoming request as json
+	var request map[string]interface{}
+	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
+		http.Error(w, err.Error(), 500)
+		return
+	}
+
+	service := grpc.NewService()
+	service.Init()
+	// call the backend service
+	exampleClient := PUTCOMMENT.NewExampleService("go.micro.srv.PutComment", service.Client())
+
+	//获取cookie
+	userlogin,err:=r.Cookie("userlogin")
+	if err != nil{
+		resp := map[string]interface{}{
+			"errno": utils.RECODE_SESSIONERR,
+			"errmsg": utils.RecodeText(utils.RECODE_SESSIONERR),
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		// encode and write the response as json
+		if err := json.NewEncoder(w).Encode(resp); err != nil {
+			http.Error(w, err.Error(), 503)
+			beego.Info(err)
+			return
+		}
+		return
+	}
+
+	rsp, err := exampleClient.PutComment(context.TODO(), &PUTCOMMENT.Request{
+
+		Sessionid:userlogin.Value,
+		Comment:request["comment"].(string),
+		OrderId:ps.ByName("id"),
+	})
+	if err != nil {
+		http.Error(w, err.Error(), 500)
+		return
+	}
+
+	// we want to augment the response
+	response := map[string]interface{}{
+		"errno": rsp.Errno,
+		"errmsg": rsp.Errmsg,
+	}
+	w.Header().Set("Content-Type", "application/json")
+
+	// encode and write the response as json
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		http.Error(w, err.Error(), 501)
+		return
+	}
+}
+//mo ren
 func ExampleCall(w http.ResponseWriter, r *http.Request ) {
 	// decode the incoming request as json
 	var request map[string]interface{}

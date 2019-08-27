@@ -60,9 +60,17 @@ func main() {
     rou.GET("/api/v1.0/houses/:id",handler.GetHouseInfo)
     //查找房源信息
     rou.GET("/api/v1.0/houses",handler.GetHouses)
-    //下单
+    //发布 orders
     rou.POST("/api/v1.0/orders",handler.PostOrders)
-
+    //get 查看房东/租客订单信息请求
+    rou.GET("/api/v1.0/user/orders",handler.GetUserOrder)
+    //put房东同意/拒绝订单
+    //api/v1.0/orders/:id/status
+    rou.PUT("/api/v1.0/orders/:id/status",handler.PutOrders)
+    //PUT 用户评价订单信请求
+    //api/v1.0/orders/:id/comment
+    //api/v1.0/orders/1/comment
+    rou.PUT("/api/v1.0/orders/:id/comment",handler.PutComment)
 
 
     // register html handle

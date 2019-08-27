@@ -4,9 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"github.com/astaxie/beego"
+	"github.com/astaxie/beego/orm"
+	"github.com/garyburd/redigo/redis"
 	"strconv"
 	"time"
 	"uhome/DataManipulation"
+	"uhome/UHomeWeb/models"
 	"uhome/UHomeWeb/utils"
 
 	example "uhome/PostOrders/proto/example"
@@ -21,11 +24,11 @@ func (e *Example) PostOrders(ctx context.Context, req *example.Request, rsp *exa
 	valueId,err:=DataManipulation.GetSession(sessionid_userid)
 	if err!=nil{
 		rsp.Errno=utils.RECODE_DBERR
-		rsp.Errmsg=utils.RecodeText(rsp.Errno)
+		rsp.Errmsg="session err"
 		return nil
 
 	}
-	userId:=int(valueId.([]uint8)[0])
+	userId,_:=redis.Int(valueId,nil)
 
 	reqMap:=make(map[string]interface{})
 	json.Unmarshal(req.Body,&reqMap)
@@ -35,13 +38,15 @@ func (e *Example) PostOrders(ctx context.Context, req *example.Request, rsp *exa
 		return nil
 	}
 
+	beego.Info("data",reqMap)
 	//获取订单起止时间
-	startDateTime,_:=time.Parse("2006-01-02 15:04:05",reqMap["start_date"].(string)+"00:00:00")
-	endDateTime,_:=time.Parse("2006-01-02 15:04:05",reqMap["end_date"].(string)+"00:00:00")
+	startDateTime,_:=time.Parse("2006-01-02",reqMap["start_date"].(string))
+	endDateTime,_:=time.Parse("2006-01-02 ",reqMap["end_date"].(string))
+	beego.Info("startDate:",startDateTime)
 	//计算订单天数
 	days:=endDateTime.Sub(startDateTime).Hours()/24
 
-	house_id, _ := strconv.Atoi(RequestMap["house_id"].(string))
+	house_id, _ := strconv.Atoi(reqMap["house_id"].(string))
 	//房屋对象
 	house := models.House{Id: house_id}
 	o := orm.NewOrm()
@@ -53,7 +58,7 @@ func (e *Example) PostOrders(ctx context.Context, req *example.Request, rsp *exa
 	o.LoadRelated(&house, "User")
 
 	//确保当前的uers_id不是房源信息所关联的user_id
-	if userid == house.User.Id {
+	if userId == house.User.Id {
 
 
 		rsp.Errno  =  utils.RECODE_ROLEERR
@@ -62,7 +67,7 @@ func (e *Example) PostOrders(ctx context.Context, req *example.Request, rsp *exa
 		return nil
 	}
 	//确保用户选择的房屋未被预定,日期没有冲突
-	if end_date_time.Before(start_date_time) {
+	if endDateTime.Before(startDateTime) {
 
 		rsp.Errno  =  utils.RECODE_ROLEERR
 		rsp.Errmsg  = "结束时间在开始时间之前"
@@ -77,10 +82,10 @@ func (e *Example) PostOrders(ctx context.Context, req *example.Request, rsp *exa
 	amount := days * float64(house.Price)
 	order := models.OrderHouse{}
 	order.House = &house
-	user := models.User{Id: userid}
+	user := models.User{Id: userId}
 	order.User = &user
-	order.Begin_date = start_date_time
-	order.End_date = end_date_time
+	order.Begin_date = startDateTime
+	order.End_date = endDateTime
 	order.Days = int(days)
 	order.House_price = house.Price
 	order.Amount = int(amount)
@@ -88,16 +93,14 @@ func (e *Example) PostOrders(ctx context.Context, req *example.Request, rsp *exa
 	//征信
 	order.Credit = false
 
-	beego.Info(order)
 	//将订单信息入库表中
 	if _, err := o.Insert(&order); err != nil {
 		rsp.Errno  =  utils.RECODE_DBERR
-		rsp.Errmsg  = utils.RecodeText(rsp.Errno)
+		rsp.Errmsg  = err.Error()
 		return nil
 	}
 	//返回order_id
 
-	bm.Put(sessioniduserid, string(userid) ,time.Second*7200)
 	rsp.OrderId = int64(order.Id)
 	rsp.Errno=utils.RECODE_OK
 	rsp.Errmsg=utils.RecodeText(rsp.Errno)
