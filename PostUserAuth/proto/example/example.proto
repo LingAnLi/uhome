@@ -1,0 +1,40 @@
+syntax = "proto3";
+
+package go.micro.srv.PostUserAuth;
+
+service Example {
+	rpc PostUserAuth(Request) returns (Response) {}
+	rpc Stream(StreamingRequest) returns (stream StreamingResponse) {}
+	rpc PingPong(stream Ping) returns (stream Pong) {}
+}
+
+message Message {
+	string say = 1;
+}
+
+message Request {
+	string Real_name= 1;
+	string Id_card= 2;
+	string SessionId= 3;
+}
+
+message Response {
+    string errno = 1;
+	string errmsg = 2;
+}
+
+message StreamingRequest {
+	int64 count = 1;
+}
+
+message StreamingResponse {
+	int64 count = 1;
+}
+
+message Ping {
+	int64 stroke = 1;
+}
+
+message Pong {
+	int64 stroke = 1;
+}

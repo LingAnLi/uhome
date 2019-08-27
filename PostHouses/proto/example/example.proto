@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+package go.micro.srv.PostHouses;
+
+service Example {
+	rpc PostHouses(Request) returns (Response) {}
+}
+
+
+message Request {
+	bytes Body = 1;
+	string SessionId = 2;
+}
+
+message Response {
+    string Errno = 1;
+	string Errmsg = 2;
+	string House_id =3;
+}
+

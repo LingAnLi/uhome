@@ -1,0 +1,24 @@
+syntax = "proto3";
+
+package go.micro.srv.PostHouseImg;
+
+service Example {
+	rpc PostHouseImg(Request) returns (Response) {}
+	}
+
+
+message Request {
+	string SessionId = 1;
+	bytes HouseImg = 2;
+	string HouseId =3;
+	int64 Size = 4;
+	string Ext =5;
+}
+
+message Response {
+    string Errno = 1;
+	string Errmsg = 2;
+	string Url =3;
+
+}
+

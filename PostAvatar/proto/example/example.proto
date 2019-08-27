@@ -1,0 +1,42 @@
+syntax = "proto3";
+
+package go.micro.srv.PostAvatar;
+
+service Example {
+	rpc PostAvatar(Request) returns (Response) {}
+	rpc Stream(StreamingRequest) returns (stream StreamingResponse) {}
+	rpc PingPong(stream Ping) returns (stream Pong) {}
+}
+
+message Message {
+	string say = 1;
+}
+
+message Request {
+    bytes Avatar =1;
+	int64 Size = 2;
+	string Ext = 3;
+	string SessionId = 4;
+}
+
+message Response {
+	string errmsg = 1;
+	string errno = 2;
+	string Avatar_url= 3;
+}
+
+message StreamingRequest {
+	int64 count = 1;
+}
+
+message StreamingResponse {
+	int64 count = 1;
+}
+
+message Ping {
+	int64 stroke = 1;
+}
+
+message Pong {
+	int64 stroke = 1;
+}

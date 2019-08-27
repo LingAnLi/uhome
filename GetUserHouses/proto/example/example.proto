@@ -1,0 +1,19 @@
+syntax = "proto3";
+
+package go.micro.srv.GetUserHouses;
+
+service Example {
+	rpc GetUserHouses(Request) returns (Response) {}
+
+}
+
+message Request {
+	string SessionId = 1;
+}
+
+message Response {
+    string Errno = 1;
+	string Errmsg = 2;
+	//查询到的完整数据的二进制流
+	bytes AllData =3;
+}
