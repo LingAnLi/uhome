@@ -60,7 +60,7 @@ func main() {
     rou.GET("/api/v1.0/houses/:id",handler.GetHouseInfo)
     //查找房源信息
     rou.GET("/api/v1.0/houses",handler.GetHouses)
-    //发布 orders
+    //下单
     rou.POST("/api/v1.0/orders",handler.PostOrders)
 
 
